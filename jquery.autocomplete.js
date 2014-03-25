@@ -824,7 +824,7 @@ $.fn.selection = function(start, end) {
 		});
 	}
 	var field = this[0];
-	if ( field.createTextRange ) {
+	if ( field.createTextRange && document.selection ) {
 		var range = document.selection.createRange(),
 			orig = field.value,
 			teststring = "<->",
