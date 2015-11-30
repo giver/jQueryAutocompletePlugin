@@ -77,6 +77,8 @@ $.Autocompleter = function(input, options) {
 
 	var timeout;
 	var previousValue = "";
+    var previousCursorPos = -1;
+    var changes = false;
 	var cache = $.Autocompleter.Cache(options);
 	var hasFocus = 0;
 	var lastKeyPressCode;
@@ -259,22 +261,30 @@ $.Autocompleter = function(input, options) {
 		}
 
 		var currentValue = $input.val();
-
-		if ( !skipPrevCheck && currentValue == previousValue )
+        changes = currentValue != previousValue;
+        var cursorAt = $input.selection().start;
+		if (!skipPrevCheck && !changes && previousCursorPos == cursorAt)
 			return;
 
 		previousValue = currentValue;
+        previousCursorPos = cursorAt;
 
-		currentValue = lastWord(currentValue);
-		if ( currentValue.length >= options.minChars) {
-			$input.addClass(options.loadingClass);
-			if (!options.matchCase)
-				currentValue = currentValue.toLowerCase();
-			request(currentValue, receiveData, hideResultsNow);
-		} else {
-			stopLoading();
-			select.hide();
-		}
+        var separator = $.trim(options.multipleSeparator);
+        var disable = options.multiple &&
+                currentValue.indexOf(separator, cursorAt) != -1;
+
+        currentValue = lastWord(currentValue);
+        if (!disable && currentValue.length >= options.minChars) {
+            $input.addClass(options.loadingClass);
+            if (!options.matchCase)
+                currentValue = currentValue.toLowerCase();
+            request(currentValue, receiveData, hideResultsNow);
+        } else {
+            stopLoading();
+            select.hide();
+        }
+
+		previousValue = $input.val();
 	};
 
 	function trimWords(value) {
@@ -282,7 +292,7 @@ $.Autocompleter = function(input, options) {
 			return [""];
 		if (!options.multiple)
 			return [$.trim(value)];
-		return $.map(value.split(options.multipleSeparator), function(word) {
+		return $.map(value.split($.trim(options.multipleSeparator)), function(word) {
 			return $.trim(value).length ? $.trim(word) : null;
 		});
 	}
@@ -308,7 +318,7 @@ $.Autocompleter = function(input, options) {
 	function autoFill(q, sValue){
 		// autofill in the complete box w/the first match as long as the user hasn't entered in more data
 		// if the last user key pressed was backspace, don't autofill
-		if( options.autoFill && (lastWord($input.val()).toLowerCase() == q.toLowerCase()) && lastKeyPressCode != KEY.BACKSPACE ) {
+		if( options.autoFill && changes && (lastWord($input.val()).toLowerCase() == q.toLowerCase()) && lastKeyPressCode != KEY.BACKSPACE ) {
 			// fill in the value (keep the case the user has typed)
 			$input.val($input.val() + sValue.substring(lastWord(previousValue).length));
 			// select the portion of the value not typed by the user (so the next character will erase)
@@ -846,3 +856,4 @@ $.fn.selection = function(start, end) {
 };
 
 })(jQuery);
+
